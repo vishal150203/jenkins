@@ -1,0 +1,51 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureSubscription: 'YourAzureSubscription'  # Name of the Azure subscription
+  resourceGroup: 'MyResourceGroup'
+  vmName: 'MyVM'
+  location: 'East US'
+  image: 'UbuntuLTS'  # You can change to Windows if needed
+  adminUsername: 'azureuser'
+  adminPassword: 'YourPasswordHere'  # Use a more secure approach, such as Azure KeyVault
+
+stages:
+  - stage: CreateVM
+    jobs:
+      - job: CreateVM
+        steps:
+          - task: UseAzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # Log in to Azure (this is done automatically in the task above)
+                echo "Creating Resource Group..."
+                az group create --name $(resourceGroup) --location $(location)
+
+                echo "Creating Virtual Machine..."
+                az vm create \
+                  --resource-group $(resourceGroup) \
+                  --name $(vmName) \
+                  --image $(image) \
+                  --admin-username $(adminUsername) \
+                  --admin-password $(adminPassword) \
+                  --size Standard_DS1_v2 \
+                  --output json
+
+                echo "VM created successfully."
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # Show the VM's details after creation
+                az vm show --resource-group $(resourceGroup) --name $(vmName) --output table
